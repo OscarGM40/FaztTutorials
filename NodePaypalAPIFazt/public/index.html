@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyCompany.com</title>
+</head>
+
+<body>
+  <button id="checkout">Checkout</button>
+
+  <script>
+    document.getElementById("checkout").addEventListener("click", async function () {
+      const response = await fetch('/payments/create-order', {
+        method: 'POST',
+      });
+      const orderCreated = await response.json();
+      console.log(orderCreated);
+
+      window.location.href = orderCreated.orders.links[1].href;
+
+    })
+  </script>
+</body>
+
+</html>

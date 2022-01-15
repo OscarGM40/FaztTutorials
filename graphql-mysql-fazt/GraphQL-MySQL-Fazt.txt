@@ -1,0 +1,284 @@
+						CRUD CON MYSQL Y GRAPHQL BY FAZT
+
+Source: https://www.youtube.com/watch?v=8_DuZHJBB-k
+Repo: https://github.com/FaztWeb/graphql-mysql-crud-typescript
+
+IMPORTANTE: En este proyecto no voy a crear una REST API, sino una GRAPHQL API.
+>npm i express express-graphql graphql mysql typeorm cors bcryptjs
+
+Necesito graphql ya que es el core y express-graphql para construir una graphql api sobre express
+<mysql> es el adaptador simplemente del ORM de turno al gestor
+typeorm es un orm para usar con gestores SQL (si por ejemplo usará otro dialecto como postgresql habriá que instalar su adaptador correspondiente,ojo)
+
+Y dado que vamos a usar typescript habrá que instalar varias dependencias en desarrollo y los @types:
+npm i -D typescript ts-node-dev @types/bcryptjs @types/cors @types/express @types/node dotenv 
+
+NOTA: recuerda que puedo usar npx para llamar a cualquier comando del proyecto:
+npx tsc --init <- claro que yo ya lo tengo en global,pero la librería typescript que hemos instalado da acceso a este comando en el proyecto.
+
+Fijate que crear un proyecto de typescript me obliga a crear este archivo,y a decirle donde compilará y donde está el proyecto:
+ "rootDir":"./src",
+ "outDir": "./dist"
+
+				CONFIGURAR SERVIDOR EXPRESS JUNTO CON GRAPHQL   
+
+ NOTA:no usar ts-node ya que ts-node-dev realiza seguimiento de los files que cambian y recompila de nuevo,algo que ts-node no hace.
+
+Bien,lo primero de todo es saber que debo crear una url para sacar la interfaz gráfica de GRAPHQL llamada GraphiQL (puedo omitirlo con graphiql:false):
+
+import express from 'express';
+import { graphqlHTTP } from 'express-graphql';
+const app = express();
+
+app.use('/graphql', graphqlHTTP({
+  graphiql: true,
+  schema: schema
+}));
+
+IMPORTANTE: una API GRAPHQL me pedirá siempre un schema.El schema define las consultas que se pueden hacer,si son queries o mutation,etc..
+
+Para crear un Schema minimo necesitaré una query:
+import { GraphQLSchema,GraphQLObjectType } from 'graphql';
+
+export const schema = new GraphQLSchema({
+  query: RootQuery,
+  // mutation: {}
+});
+
+Esa RootQuery es un GraphQLObjectType:
+const RootQuery = new GraphQLObjectType({
+  name: 'RootQueryType',
+  fields: {
+    greeting:GREETING
+  }
+}); 
+Y ese GREETING luce asi:
+import { GraphQLString } from "graphql"
+
+/* una action siempre lleva el type y el resolve */
+export const GREETING = {
+  type: GraphQLString,
+  resolve: () => "Hello World"
+}
+
+					CONECTAR MYSQL MEDIANTE TYPEORM
+
+Para conectar a Mysql recuerda que hemos instalado mysql y el orm TypeORM:
+
+NOTA: TypeORM soporta MySQL / MariaDB / Postgres / CockroachDB / SQLite / Microsoft SQL Server / Oracle / SAP Hana / sql.js y MongoDB NoSQL database. 
+
+Realmente es bastante sencillo usar este ORM,aunque pide varias propiedades no es nada complejo.Perfecto:
+
+import { createConnection } from 'typeorm';
+
+export const connectDB = async () => {
+    await createConnection({
+      type: 'mysql',
+      host: '0.0.0.0',
+      port: 3307, // el port va como number
+      username: 'root',
+      password: 'root',
+      database: 'graphql-typeorm-fazt', <- la DB debe existir!
+      entities: [],
+      synchronize: true, // si no existen las tablas la crea
+      ssl: false, //como es local iremos sin ssl
+    });
+}
+
+Si tuviera problemas con el usuario(que los tuve) porque no tiene la autorización para identificarse:
+>ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'passwordDesired'; <- ojo con el localhost
+>flush privileges;
+Aparte la database debe existir(hay una librería llamada typeorm-extension,usar npm i typeorm-extension,con esta librería puedo gestionar la creación de bases de datos desde el proyecto también)
+
+						ENTIDADES CON TYPEORM
+
+Ya hemos visto como conectarse fácil con el ORM TypeORM.Este ORM le llama entidades a las tablas,luego creo el folder entities.Es muy parecido a Spring en este sentido,usaré decoradores para agregar funcionalidad a clases,propiedades y métodos:
+IMPORTANTE:para poder usar decoradores en un proyecto tengo que habilitarlo en en tsconfig.json:
+ "experimentalDecorators": true, /* Enable experimental support for TC39 stage 2 draft decorators. */
+ "emitDecoratorMetadata": true,                    /* Emit design-type metadata for decorated declarations in source files. */
+Simplemente es descomentarlos.Recuerda que hice lo mismo con rootDir y outputDir.
+
+NOTA: esa clase con la entidad debe heredar de BaseEntity
+
+import { BaseEntity, Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+
+@Entity({ name: 'users'})
+export class Users extends BaseEntity {
+  
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @Column({ type: 'varchar', length: 50 })
+  name: string;
+  
+  @Column({ type: 'varchar', length: 50 })
+  email: string;
+  
+  @Column({ type: 'varchar', length: 255 })
+  password: string;
+  
+}
+IMPORTANTE: siempre debe haber una @PrimaryColumn minimo.En este caso como además queremos que sea autogenerada usaremos @PrimaryGeneratedColumn,pero hay que usar uno de los dos minimo.
+
+Puedo ver que tengo un error ya que no uso un constructor.Hay que habilitar esta feature también en el tsconfig.json(ya vamos 5),pero además cambiandola a false:
+ "strictPropertyInitialization": false,             /* Check for class properties that are declared but not set in the constructor. */ <- ojo que estaba en true
+
+Ya puedo obviar el tener que usar un constructor.Ahora bien,para usar esta entidad recuerda que teniamos un arreglo de entities en el createConnection.Hay que agregarla a ese arreglo para usarla.
+Y también poner synchronize a true.Bien,es hora de usar esta tabla.
+
+						CREATE USER MUTATION
+
+Vamos a crear nuestra primera mutación creando un usuario.Recuerda que las actions deben especificar el type y el resolve:
+
+import { GraphQLString } from "graphql";
+
+export const CREATE_USER = {
+  type: GraphQLString,
+  /* cuando llame a resolve debo retornar un String */
+  resolve(){
+    return "User created"; <- debe coincidir con el type
+  }}
+
+Fijate en la otra que ya tenemos:
+import { GraphQLString } from "graphql"
+
+/* una action siempre lleva el type y el resolve */
+export const GREETING = {
+  type: GraphQLString,
+  resolve: () => "Hello World"
+}
+Claro que esto se irá complicando más.Fijate de nuevo como creamos el Schema:
+
+const RootQuery = new GraphQLObjectType({
+  name: 'RootQueryType',
+  fields: {
+    greeting:GREETING
+  }
+});
+
+/* normalmente un schema tendrá queries y mutations */
+const Mutation = new GraphQLObjectType({
+  name: 'Mutation',
+  fields: {
+    createUser: CREATE_USER
+  }
+})
+
+/* un schema siempre va a tener dos propiedades,query(consultar datos,sin alterar) y mutation(alterar datos). */
+export const schema = new GraphQLSchema({
+  query: RootQuery,
+  mutation: Mutation
+});
+Se usa la clase GraphQLObjectType para crear el RootQuery con todas las queries y el RootMutation para agrupar todas las mutations.Se crea el Schema y se le pasa en el router.Desde luego esta parte es sencilla.
+
+NOTA: para llamar a un mutation se usa mutation { name},para llamar a una query se usa lo mismo query { name } y ejecutar.Claro que esto es muy básico.Realmente una mutation suele llevar argumentos: 
+
+			PASAR ARGUMENTOS AL RESOLVER DESDE LA ACTION
+
+Para pasar argumentos al resolver hay que definirlos con su nombre y tipo en la action bajo la propiedad args:{} de tipo Object:
+
+export const CREATE_USER = {
+  type: GraphQLString,
+  /* los argumentos se reciben en la propiedad args */
+  args: {
+    name: { type: GraphQLString },
+    email: { type: GraphQLString },
+    password: { type: GraphQLString }
+  },
+  resolve(){
+    return "User created";
+  }
+}
+Esto no sólo me dará autocompletado sino que también me da el tipo de cada argumento,no podré pasar un number como name
+
+ mutation {
+  createUser(name:"moko",email:"moko@mokete.mok",password:"mokuanime") 
+}
+Para pasar argumentos hay que usar paréntesis normales.Ahora bien,ya hemos definido los argumentos de esa query o mutation,con lo que el resolver los va a recibir automáticamente,sólo que lo hace en la segunda posición:
+ 
+ resolve(parent:any, args:any) {
+    console.log(args);
+    return "User created";
+  }
+La salida será algo así:
+{ name: 'moko', email: 'moko@mokete.mok', password: 'mokuanime' }
+
+Ya solo es usar el ORM en el resolver(que es como el controlador,es el que va a ejecutar la lógica)
+
+					USANDO EL DAO EN TYPEORM
+
+Para poder interactuar con la tabla al usar TypeORM hay que traer la Entidad,la clase anotada con ese decorador @Entity.Actuará como DAO.
+
+De momento podemos usar insert():Promise que hace una insercción rápida en la DB(a diferencia de save() no usa insercciones en cascada ni comprueba ciertas cosas,pero es la más eficiente de las dos)
+
+Al ser una Promise usaremos asincronía(debes comprender mejor cuando es una function y cuando una arrow function,ya que cambia la posición del asyn:
+async resolve(parent:any,args:any){
+  const {name,email,password} = args;
+  const result = await Users.insert({name,email,password});
+  console.log(result);
+  return "user created";
+
+* Fijate que aún debo retornar un string mientras no le cambie el type
+Esto me mostrará por consola lo siguiente:
+InsertResult {
+  identifiers: [ { id: 1 } ],
+  generatedMaps: [ { id: 1 } ],
+  raw: OkPacket {
+    fieldCount: 0,
+    affectedRows: 1,
+    insertId: 1,
+    serverStatus: 2,
+    warningCount: 0,
+    message: '',
+    protocol41: true,
+    changedRows: 0
+  }
+}
+Realmente no queremos que nos devuelva un string ese endpoint,sino el usuario.Dado que no existe ese tipo en graphql no lo puedo importar sino que tengo que crear un tipo de dato personalizado usando la misma librería graphiql.
+
+ return {
+      id: result.identifiers[0].id, <- puede venir de varios sitios
+      name,
+      email,
+      password
+  };
+
+Cabe recalcar que la contraseña hay que encriptarla:
+import bcryptjs from 'bcryptjs'; <-ojo que hay que traer todo por default
+
+const hashedPassword = bcryptjs.hashSync(password,10); <- podria usar await,etc...
+
+
+		CREAR TIPOS DE DATOS PERSONALIZADOS(CUSTOM TYPES)
+
+Para crear mis customTypes no puede ser más sencillo,simplemente tengo que usar la misma clase de antes GraphQLObjectType y darle un nombre a la instancia:
+
+import { GraphQLID, GraphQLObjectType, GraphQLString } from 'graphql';
+
+export const UserType = new GraphQLObjectType({
+  name:'User',
+  fields: {
+    id: { type: GraphQLID },
+    name: { type: GraphQLString },
+    email: { type: GraphQLString },
+    password: { type: GraphQLString }
+  }
+})
+
+Ya puedo usar la instancia UserType como un type de GRAPHQL.Cambiemos el tipo de retorno de nuestra primera mutación :
+
+export const CREATE_USER = {
+   type: UserType, <- ya no puedo devolver ese String.Debo devolver un UserType,es decir un {} con id,name,email y password.
+
+  return {
+      id: result.identifiers[0].id,
+      name,
+      email,
+      password: hashedPassword
+      };
+
+Bien,a falta de ser más precisos como gestionar errores o códigos de estado de momento es bastanta sencillo todo.Veamos nuestra primer Query:
+
+					QUERY LISTAR USUARIOS
+
+

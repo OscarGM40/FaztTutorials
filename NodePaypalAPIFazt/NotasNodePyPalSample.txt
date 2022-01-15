@@ -1,0 +1,293 @@
+				      EJEMPLO SENCILLO NODE-PAYPALAPI
+
+Source: https://www.youtube.com/watch?v=sBenKZqEzpQ
+
+Vamos a hacer una pequeña práctica de como enlazar un backend Node con la API de PayPal.
+El servicio de compra y venta(su web normal) es https://www.paypal.com/es/home,pero tengo la API como desarrollador si quisiera usar sus servicios.
+Esa API de PayPal está aquí: https://developer.paypal.com/home.(simplemente añadir developer al principio)
+
+Al usar su API tendré que registrar mi aplicación con ellos,para autenticar dicha aplicación frente a PayPal y que me acepten los pagos.
+Un requerimiento es tener una cuenta normal de Paypal para poder usar developer.paypal.Como ya tengo una cuenta simplemente accedo al dashboard de developer.paypal logeandome con esa cuenta.
+
+En esta API tengo dos entornos de desarrollo,uno es el 'sandbox' o entorno de desarrollo,el otro es 'live' o de producción.Lógicamente,usaré un entorno sandbox al desarrollar(es gratis y puedo crear cuentas ilimitadas).
+
+					CREAR CUENTA BUSINESS O PERSONAL
+
+En este entorno mi cuenta normal no funcionará.Tengo que crear cuentas de desarrollo.
+Para crear estas cuentas de pruebas tengo la opción 'Accounts' en el sidebar.Fijate que arriba del todo tengo MyApps & Credentials para crear aplicaciones.
+Cada cuenta puede ser de tipo personal(comprador)  o business(de vendedor).Creo una de vendedor y eligo el país.
+Puedo editar el correo aleatorio que me dan,incluso la password.
+NOTA:el servicio da muchos errores,hay que refrescar varias veces.
+
+  				CREAR Y REGISTRAR UNA APLICACIÓN
+
+Voy a la pestaña MyApps y creo una aplicación.Hay dos tipos,Merchant y Platform.Eligo Merchant(Platform parece más completa).Habrá que linkar una cuenta Sandbox(de testing),asi que enlazo la recién creada.
+Una vez genere la cuenta me dará un CLIENT ID(pública) y un SECRET ID.Bien ,ya hemos visto como acceder a la API para desarrolladores de PayPal,como tiene el ambiente de producción(live) y el de desarrollo(sandbox),como crear cuentas y aplicaciones.
+
+CLIENT_ID: ARkxSEwbEd3puRoD5lgYuMY1AjjV5N5NaFqzoqvrt1_slZ4uQq1KDI7mdZwnl7Z5nm3pjDJrB9sl7Ysk
+
+SECRET_ID: EE7o2Y93e_Xp6Ow5XTuLQMFicBC-R4TYCpK7TunpSnED_RpuqrEAis9S6nW4Wd473OlLLABRq7I_8x2Q
+
+					NODE INITIAL SETUP WITH BABEL
+
+Inicio un proyecto node.Como dependencias tendrá:
+npm i express morgan cors axios
+Fijate que voy a hacer peticiones desde el backend,no sólo recibirlas.Además no usamos ninguna libreria relacionada con Paypal,no es necesario,usaremos la APi de Paypal.
+
+NOTA:para poder usar import y export en un ambiente node puedo usar "type":"module" en el package.json pero hay muchos paquetes que aún no lo soportan.Lo que haremos es usar Babel(ya que permite convertir código moderno a código antigüo).
+Par poder usar Babel hay que instalarlo y configurarlo:
+npm i @babel/core @babel/cli @babel/preset-env @babel/node -D
+
+Fijate que babel va en desarrollo.Para configurarlo creo un .babelrc(todo junto):
+{ "presets":["@babel/preset-env"]}
+
+Ahora bien,tendré que indicar en los scripts que hay que compilar con Babel:
+  "start": "nodemon src/index.js  --exec babel-node",
+Simplemente se usa la flag --exec babel-node
+* Podría usar "dev":"babel-node src/index.js" pero es como un node src/index.js
+Como puedo observar es una soberana tontería configurar babel.
+
+					CONFIGURAR RUTAS Y CONTROLADORES 
+
+Vamos a crear tres urls para confirmar pagos,cancelar pagos,recibirlos,etc...
+
+ Fijate que siempre que use un gestor de pagos,el primer paso lo dará el usuario,queriendo pagar un objeto.Asi que nuestro backend escuchará por esto y enviará una pantalla donde el usuario podrá gestionar el pago.Esta pantalla será una URL.
+
+Es decir que cuando un usuario quiera pagar se le va a redireccionar(PayPal ya me proporciona esta ruta,es la de aprove).
+
+Puedo ver en la API de PayPal que tengo dos endpoints para casi todo, según esté en un entorno sandbox o live apuntaré a uno u otro(simplemente las urls empezarán por sandbox o por live) <- quizas live simplemente sea no usar sandbox.domain..
+
+					CREAR ORDEN DE PAYPAL
+
+Documentación:https://developer.paypal.com/api/orders/v2/ Aqui puedo ver que tengo que apuntar aqui para crear una orden a /v2/checkout/orders y debo crear un order con las propiedades que PAyPal API pida.
+Asi que en el html recogería los datos del cliente y genero una orden con esos datos. 
+
+IMPORTANTE: purchase_units es un arreglo de ordenes de compra,si el comprador compra varias cosas simplemente serán varios elementos en el arreglo.Por otro lado application_context me permite definir muchas opciones como la confirm_url,la cancel_url,mi icono de la tienda,una landing page,shipping_preferences,de todo,...
+
+  const order = {
+    intent = "CAPTURE",
+    purchase_units = [
+      {
+        amount = {
+          currency_code = "USD",
+          value = "105.70", // $1.00 USD(siempre minimo)
+          description = "Computer keyboard"
+        }
+      },
+    ],
+* en la siguiente propiedad  podría agregar un icono de mi tienda,hacer que se loguee el usuario en paypal,darle opciones de envio,etc(ver documentacion).Pero lo más importante son las confirm_url y cancel_url para redireccionar  */
+    application_context = {
+      brand_name = "MyCompany.com",
+      landing_page = "LOGIN",
+      user_action = "PAY_NOW", //PAY_NOW, AUTHORIZE, ORDER
+      shipping_preference = "NO_SHIPPING",
+      return_url = "http://localhost:3000/payments/capture-order",
+      cancel_url = "http://localhost:3000/payments/cancel-order"
+    },
+
+Bien,esto crea una orden con dos compras,etc.Ahora bien,recuerda que hay que autenticarse frente a ellos,hay varias formas.
+Una es usar una Basic Auth  
+Otra parece que es usar un header asi: Authorization: Basic <client:secret>,
+Y otra es intercambiar las credenciales por un token.Sea como sea siempre voy a usar mis credenciales de aplicación.
+Más adelante veremos como hacerlo con el token.Empecemos por la Basic:
+
+IMPORTANTE: para crear una orden hay que usar su API ya,apuntando a /v2/checkout/orders junto con mi autenticación.
+Axios permite mandar una autenticación básica(que es lo que piden) usando una propiedad auth que es un objeto con las propiedades username y passowrd(esto es asi).Luego con todo esto puedo mandarles esa auth asi:
+
+const response = await axios.post(`${PAYPAL_API}/v2/checkout/orders`, order, {
+    auth:{
+      username: PAYPAL_CLIENT,
+      password: PAYPAL_SECRET
+    }
+  });
+Esto lo dice PayPal también,que puedo usar una autenticación básica y que ponga en los campos username y password los hash publicos y privados anteriores.
+
+Como estoy en una ruta get hago un res.send(response.data) y simplemente visito /create-order.Podré ver el objeto que me devuelve la API de PayPal.(cambiaremos a post por seguridad más adelante).
+Ese objeto tendrá un id,un estado y me darán varios enlaces.El que importa es el que dice 'approve' para aprobar el pago.Podría visitarlo ya pero esperaremos a tener una cuenta de comprador.
+Fijate que habia cometido algun error,ya aprenderé a mandar dos objetos a pagar
+
+				USAR TOKEN EN VEZ DE LAS CREDENCIALES
+
+Ya hemos aprendido como generar una orden de compra para que el usuario pueda aceptar el pago y llevarlo a cabo.Sin embargo,es mejor usar un token.
+Para que me den un token temporal puedo hacer una petición con mis credenciales a su API y me devuelven un token el cual debo adjuntar como Authorization:Bearer <token> en las subsiguientes operaciones:
+
+Para que me den un token puedo usar curl o axios:
+Postman
+In the Postman app, complete the following:
+1- Set the verb to POST.
+2- Enter https://api-m.sandbox.paypal.com/v1/oauth2/token as the request URL.
+Select the Authorization tab.
+From the TYPE list, select Basic Auth.
+In the Username field, enter your client ID.
+In the Password field, enter your secret.
+Select the Body tab.
+Select the x-www-form-urlencoded option.
+In the KEY field, enter grant_type.
+In the VALUE field, enter client_credentials.
+Select Send.
+
+PayPal returns an access token and the number of seconds the access token is valid. When you make calls to a REST API, include the access token in the Authorization header with the designation as Bearer. Reuse the access token until it expires.
+
+When your token expires, call v1/oauth2/token again to request a new token.
+
+El token me viene en la propiedad response.access_token.Asi que mejor cambiamos las credenciales por un token temporal,ya que es más seguro:
+
+/* cambio mis credentials por el token temporal */
+  const { data: { access_token }, } = await axios.post(
+    `${PAYPAL_API}/v1/oauth2/token`,
+    new URLSearchParams({
+      grant_type: "client_credentials",
+    }),
+    {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      auth: {
+        username: PAYPAL_CLIENT,
+        password: PAYPAL_SECRET,
+      },
+    }
+  );
+
+  /* ahora si,en vez de Basic Auth usamos Authorization:Bearer token */
+  const { data } = await axios.post(`${PAYPAL_API}/v2/checkout/orders`, order, {
+    headers: {
+      Authorization: `Bearer ${access_token}`,
+    },
+  });
+
+Recuerda que el body debe ser tipo form-urlencoded y que hay que pasarlo como headers{content type} y que en el body va esto: new URLSearchParams({grant_type:"client_credentials"}).Investigar sobre URLSearchParams.
+
+Al final veré una respuesta como esta(la misma que con basic auth):
+{
+  "orders": {
+    "id": "92R85279U2121621N",
+    "status": "CREATED",
+    "links": [
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/92R85279U2121621N",
+        "rel": "self",
+        "method": "GET"
+      },
+      {
+        "href": "https://www.sandbox.paypal.com/checkoutnow?token=92R85279U2121621N",
+        "rel": "approve",
+        "method": "GET"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/92R85279U2121621N",
+        "rel": "update",
+        "method": "PATCH"
+      },
+      {
+        "href": "https://api.sandbox.paypal.com/v2/checkout/orders/92R85279U2121621N/capture",
+        "rel": "capture",
+        "method": "POST"
+      }
+    ]
+  }
+}
+
+Por último,recalcar que es mejor usar POST que GET para crear la orden:
+router.post('/create-order',createOrder); <- no usar GET.
+
+				CAPTURAR ORDEN DE COMPRA CUENTA BUSINESS VS PERSONAL
+
+IMPORTANTE:debo entender que no estoy dentro de un PayPal real,fijate en la url(https://www.sandbox.paypal.com/checkoutnow?token=92R85279U2121621N)
+Al empezar por sandbox sigo en modo dev.Por ello no va a funcionar una cuenta de verdad,sólo funcionan cuentas sandbox.
+
+Anteriormente yo he creado una cuenta Business(de vendedor) simulando al que tiene la tienda,asi que vamos a crear otra cuenta simulando un comprador. 
+Me apunto su email y passwords(recuerda que puedo cambiarlas) y de nuevo voy a esa Url de approve.SI me logeo con ese usuario accederé a la ventana de confirmar o cancelar el pago(recuerda que tengo cubiertas ambas opciones).Genial.
+
+Crearé el usuario johngarrapata@personal.example.com ,será una cuenta de tipo personal.
+
+IMPORTANTE:cuando ese usuario haga click en aceptar se le va a redireccionar a /capture-order.Aqui un ejemplo de a donde se le redireccionará:
+http://localhost:3000/payments/capture-order?token=16Y96603FN0007011&PayerID=CBJLP7VVNAGES
+Puedo ver que se ha generado un token y un PayerID(Un Id del que está pagando).Debo usar ese token y el id del pagador para terminar el pago.Hay que extraerlos en el controlador
+
+IMPORTANTE:seguramente el usuario de prueba se quede cacheado,si tengo varios usuarios tengo que visitar https://www.sandbox.paypal.com/
+Esta web es una copia de PayPal,pero solo para cuentas de prueba.Alli tendré que desloguearme y cambiar de usuario si necesito hacerlo.
+
+				ENDPOINTS CAPTURE-ORDER VS CREATE-ORDER
+
+Ya hemos visto como crear una Orden de Paypal con su API.Nos pedia una estructura concreta de la orden,asi como opciones varias.
+El endpoint al que apuntar era: `${PAYPAL_API}/v2/checkout/orders`,junto con el token temporal o una autenticación básica de mi aplicación.
+Al final,el usuario podia pagar o cancelar,pero si pagaba nos mandaban a /capture_order?token&PayerId con un token y un include
+
+Es aqui donde entra otro endpoint de Paypal,que sirve para capturar una orden(recuerda,primero se crea).El Endpoint es POST: /v2/checkout/orders/{id}/capture
+El Id es el ID de la orden capturada para pagar(es el token).
+
+router.get("/capture-order", async (req, res) => {
+  const { token, PayerID } = req.query;
+  
+  console.log(token, PayerID);
+
+  const response = await axios.post(
+    `${PAYPAL_API}/v2/checkout/orders/${token}/capture`,{},{
+      auth: {
+        username: PAYPAL_CLIENT,
+        password: PAYPAL_SECRET,
+    }});
+  console.log(response.data);
+IMPORTANTE:fijate que hay que volver a identificarse.Puedo ver que el status es COMPLETED luego se ha completado el pago,también veré un ID de la transacción, o la propiedad payer con datos sobre el que pagó.
+
+POST /payments/create-order 200 1696.614 ms - 512                                
+67520397K9449020E CBJLP7VVNAGES                                                 
+{                                                                               
+  id: '67520397K9449020E',                                                       
+  status: 'COMPLETED',                                                           
+  purchase_units: [ { reference_id: 'default', payments: [Object] } ],     
+  payer: {                                                                      
+    name: { given_name: 'John', surname: 'Doe' },       
+    email_address: 'johngarrapata@personal.example.com',                        
+    payer_id: 'CBJLP7VVNAGES',     
+    address: { country_code: 'ES' }
+
+Incluso puedo ir a la web de prueba y ver las transacciones,etc con esos 5000$ de prueba.Con todo esto ya hemos visto como pagar con la API.Veamos ahora que hacer al cancelar un pago:
+
+						CANCELAR ORDEN DE COMPRA
+
+						
+Al final lo mejor es crearse unas templates en el servidor:
+<body>
+  <button id="checkout">Checkout</button>
+
+  <script>
+    document.getElementById("checkout").addEventListener("click", async function () {
+      const response = await fetch('/payments/create-order', {
+        method: 'POST',
+      });
+      const orderCreated = await response.json();
+      console.log(orderCreated);
+
+      window.location.href = orderCreated.orders.links[1].href;
+
+    })
+  </script>
+Fijate que es todo sencillo pero son varias cosas.Además,el controllador de captured-order le hacemos redirect también:
+router.get("/capture-order", async (req, res) => {
+  const { token, PayerID } = req.query;
+
+  console.log(token, PayerID);
+
+  const response = await axios.post(
+    `${PAYPAL_API}/v2/checkout/orders/${token}/capture`,{},{
+      auth: {
+        username: PAYPAL_CLIENT,
+        password: PAYPAL_SECRET,
+    }});
+  console.log(response.data);
+  
+  return res.redirect(`/payed.html`);
+});
+Simplemente es con response.redirect.
+IMPORTANTE:Paypal siempre cobra 4% de comisión,más o menos.
+
+De nuevo,al cancelar podemos redireccionar a otra plantilla desde el controlador.GEnial:
+
+router.get("/cancel-order", (req, res) => {
+  return res.redirect(`/canceled.html`);
+});
+Fijate lo útil que son las plantillas del servidor y el método redirect.
+
+.

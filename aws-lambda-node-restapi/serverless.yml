@@ -1,0 +1,46 @@
+service: aws-lambda-node-restapi
+frameworkVersion: '2 || 3'
+
+provider:
+  name: aws  #el provider o Cloud al que subir la funcion
+  runtime: nodejs12.x #runtime para ejecutarla
+  lambdaHashingVersion: '20201221' # Id único de la función 
+  region: eu-west-2 #region donde subir la función
+  iamRoleStatements:
+    - Effect: Allow
+      Action: 
+        - dynamodb:*
+      Resource:
+        - arn:aws:dynamodb:eu-west-2:433832615018:table/TaskTable
+
+functions:
+  hello: # nombre de la funcion
+    handler: src/handler.hello # folder/archivo.funcion
+    #dado que viene de handler.js,será handler.hello
+    events:
+      - httpApi:
+          path: /  # ruta de la funcion
+          method: get # metodo de la funcion
+  createTask: #nombre de la funcion
+    handler: src/addTask.addTask # folder/archivo.funcion
+    events:
+      - httpApi:
+          path: /tasks  # ruta de la funcion
+          method: post # metodo de la funcion
+resources:
+  Resources:
+    TaskTable:
+    # se creará esta tabla
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: TaskTable # nombre de la tabla
+        # BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: id 
+            AttributeType: S # string
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
