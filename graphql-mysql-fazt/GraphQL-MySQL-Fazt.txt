@@ -279,6 +279,72 @@ export const CREATE_USER = {
 
 Bien,a falta de ser más precisos como gestionar errores o códigos de estado de momento es bastanta sencillo todo.Veamos nuestra primer Query:
 
-					QUERY LISTAR USUARIOS
+					QUERY LISTAR USUARIOS(GraphQLList)
 
+Para devolver un arreglo hay que usar el tipo GraphQLList,asi que habrá que tipar la query como un new GraphQLList(UserType):
 
+export const GET_ALL_USERS = {
+  type: new GraphQLList(UserType),
+  async resolve(parent: any, args: any) {
+    const users = await Users.find();
+    return users;
+  }
+}
+IMPORTANTE: GraphQLList es una clase,a diferencia de GraphQLString que es una constante,asi que hay que instanciarla con new y con el tipo de los elementos que contendrá como argumento( new GraphQLList(UserType);
+NOTA: recuerda que es mala práctica declarar una variable para inmediatamente retornarla
+
+						BUSCAR UN USUARIO
+
+Para buscar un usuario(por Id) creo otra query nueva en el campo fields:
+
+const RootQuery = new GraphQLObjectType({
+  name: 'RootQueryType',
+  fields: {
+    getAllUsers: GET_ALL_USERS,
+    getOneUser: GET_ONE_USER,
+  }
+});
+
+Ahora en el resolver implemento la lógica:
+
+export const GET_ONE_USER = {
+  type: UserType,
+  args: {
+    id: { type: GraphQLID }
+  },
+  async resolve(parent: any, args: any) {
+    return await Users.findOne(args.id);
+  }
+}
+NOTA:TypeORM tiene findOne o findByIds,pero esté último devuelve una List<T>
+
+Fijate que si sé que es un ID debo usar GraphQLID y no GraphQLString(un GraphQLID puede ser un string o un número,y esto se cumple además,mientras que si lo tipara como GraphQLString no podría usar un number,lo cual es un error).
+NOTA:GraphiQL usa : para asignar y "" para strings
+
+						DELETE USER MUTATION
+
+Para borrar habrá que usar el método EntityDAO.delete(condition) que devuelve un DeleteResult.Si por ejemplo pongo un ID que no se encuentra no afectará a ningun registro:
+
+DeleteResult { raw: [], affected: 0 }  <- si pongo un id que no existe,pero válido
+
+Asi que ya podemos realizar la condición.Fijate que esta vez vamos a usar su tipo GraphQLBoolean para retornar true | false:
+
+export const DELETE_USER = {
+  type: GraphQLBoolean,
+  args: {
+    id: { type: GraphQLID }
+  },
+  async resolve(_: any, {id}: any) {
+    const result = await Users.delete(id);
+    if(result.affected === 1) {
+      return true;
+    }else {
+      return false;
+    }
+  }
+
+Fijate también que puedo desestructurar incluso en el segundoa argumento del resolve(parent,args),lo cual parece bastante útil.
+
+				UPDATE USER MUTATION
+
+MINUTO 1h25

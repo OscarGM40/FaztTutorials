@@ -2,7 +2,6 @@ import { app } from "./app";
 import { connectDB } from './db';
 
 
-
 /*  */
 (async function main(){
   try {
