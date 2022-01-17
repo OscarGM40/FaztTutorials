@@ -1,0 +1,28 @@
+
+
+Fuente: https://www.youtube.com/watch?v=xumrHy_Mv6k&t=299s
+Esta libreria permite copiar al portapapeles del sistema operativo tanto en móvil como en web.
+
+La idea de este módulo es englobar un componente propio en el que ellos proporcionan(<CopyToClipboard>).Alli en una propiedad text hay que pasar lo que quiero copiar y también proporcionan el método onCopy.
+
+IMPORTANTE: El componente <CopyToClipboard> es un componente propio de react-copy-to-clipboard y sólo permite tener un elemento dentro,porque si no no sabe de donde copiar.
+
+NOTA: siempre debería acompañar de feedback la acción de copiado,para ello usaremos la biblioteca para notificaciones react-hot-toast que es muy ligera
+
+import { CopyToClipboard } from 'react-copy-to-clipboard';
+import  { Toaster,toast } from 'react-hot-toast'
+
+function App() {
+
+  return (
+    <>
+      <CopyToClipboard text="https://google.com">
+          <p
+            onClick={() => toast('texto copiado',{position:'bottom-right'})}
+            style={{ textAlign: 'center' }}>copy me!!!</p>
+      </CopyToClipboard>
+      <Toaster />
+    </>
+
+  );
+

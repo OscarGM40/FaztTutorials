@@ -1,9 +1,12 @@
 const { v4 } = require("uuid");
 const AWS = require("aws-sdk");
 
-const addTask = async (event) => {
+const middy = require("@middy/core");
+const jsonBodyParser = require("@middy/http-json-body-parser");
+
+const ADD_TASK = async (event) => {
   /* recibiré un title y una description para crear una task.Ojo,hay que parsearlo desde el JSON en este BaaS */
-  const { title, description } = JSON.parse(event.body);
+  const { title, description } = event.body;
   const createdAt = new Date();
 
   /* me conecto a la tabla de DynamoDB(usará las Credentials actuales) */
@@ -20,6 +23,7 @@ const addTask = async (event) => {
         title,
         description,
         createdAt,
+        done: false,
       },
     };
 
@@ -40,5 +44,5 @@ const addTask = async (event) => {
 };
 
 module.exports = {
-  addTask,
+  ADD_TASK: middy(ADD_TASK).use(jsonBodyParser()),
 }

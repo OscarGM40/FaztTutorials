@@ -1,0 +1,37 @@
+@base_url=https://qvzttz98vi.execute-api.eu-west-2.amazonaws.com/tasks
+
+# @name=create_task
+POST {{base_url}}
+Accept: application/json
+Content-Type: application/json
+
+{
+    "title":"tarea 04",
+    "description":"aprender Swagger"
+}
+
+
+###
+# @name=get_task
+GET {{base_url}}/5b131a93-719f-49f5-94b9-b5afbdf0e51d
+
+
+###
+# @name=GET_all_tasks
+GET {{base_url}}
+
+###
+PUT {{base_url}}/cdbf2638-d1fd-44f0-8cd3-90bb2f5ca1bb
+Accept: application/json
+Content-Type: application/json
+
+{
+    "title":"tarea terminada",
+    "description":"recolectar piedra del infinito terminado",
+    "done":true
+}
+
+# @name=delete_task
+###
+DELETE {{base_url}}/5ad48b6b-d046-4ceb-a338-8f924e970743
+

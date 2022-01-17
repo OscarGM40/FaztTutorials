@@ -5,11 +5,12 @@ Repo: https://github.com/FaztWeb/nodejs-aws-lambda-crud
 
 AWS Lambda es un servicio de Amazon para crear funciones que son subidas a la nube e integradas con otros servicios de la suite AWS como bases de datos.
 
-Crearemos usa REST API usando el framework llamado SERVERLESS,la cual también usará su base de datos DINAMO DB(la cual es una db no relacional).
+Crearemos una REST API usando el framework llamado SERVERLESS,la cual también usará su base de datos DINAMO DB(la cual es una db no relacional).
 
 Requirements: Node,una cuenta de AWS(me vale el tier gratuito),el framework Serverless(https://www.serverless.com/),
 
 LLegados a este punto hay que diferenciar entre el concepto de Serverless(Faas+BaaS) y el framework del mismo nombre:
+NOTA:recuerda que Serverless es la agrupación de ambos conceptos Faas y Baas.
 
 				SERVERLESS CONCEPT THEORIC INTRO BY FAZT
 
@@ -23,7 +24,7 @@ Estos servicios suelen proporcionarme el SDK para interactuar con ese Backend(co
 Incluso proporcionan analíticas o Machine Learning.Todo esto es el Baas.
 
 Bien,pues serverless es la combinación o unión de Faas y BaaS.Se ha vuelto muy popular debido a su simplicidad y rapidez(fijate que codear la Auth en cada aplicación es un paso atrás comparandolo con implementar Firebase Auth,lo cual puedo hacer en unos minutos).
-NOTA:Amazon tiene también su servicio para OAuth y se llama Amazon Amplified(y lógicamente los demás providers lo tendrán).
+NOTA:Amazon tiene también su servicio para OAuth y se llama Amazon Amplify(y lógicamente los demás providers lo tendrán).
 
 Con el tiempo todo esto mejorará,se volverá más simple,mejor documentado, y se usará mucho.También se volverá más barato debido a que se usará más.
 Esto se puede apreciar ya,habiendo muchos más puestos de frontend que de backend.
@@ -31,7 +32,7 @@ Esto se puede apreciar ya,habiendo muchos más puestos de frontend que de backen
 Serverless también permite escalar vertical u horizontalmente simplemente pagando un poco más en unos instantes.
 No se necesita administrar nada,ya que lo hacen ellos.
 Incluso sólo cobran por cada uso,en vez de un VPS que va a cobrar lo usen 100 personas o 100.000.
-Dejar el backend de lado también permite enfocarme más en el frontend,mejorando en es aspecto,etc...
+Dejar el backend de lado también permite enfocarme más en el frontend,mejorando en ese aspecto ya que puedo dedicarme más a él,etc...
 
 Servicios como Cloudinary,Netlify,Auth0 son BaaS.Fijate que Cloudinary me provee de varias Urls para usar segun el screensize,haciendo útilisimo usarlo,y ahorrando tiempo.Netlify me permite un deploy instantáneo usando Git o un build.
 Hoy en día debo aprender todos estos servicios,ya que son una gran ayuda,como puedo observar.
@@ -39,7 +40,7 @@ Hoy en día debo aprender todos estos servicios,ya que son una gran ayuda,como p
 Tengo SERVERLESS GraphQL como Hasura,CosmosDB,8Base o Appsync.En cuanto a Cloud Funtions Azure,GCP o AWS lo ofrecen,entre otros(Netily y Firebase tmb).
 Casi siempre se usan de la misma manera,por CLI usando su SDK o su CLI-tools que descargaré.
 
-						FRAMEWORK SERVERLESS
+			AWS + SERVERLESS FUNCTIONS WITH DYNAMODB PROJECT
 
 El framework Serverless me permite crear funciones localmente,en mi pc, y subirlas a la nube en el Cloud que yo quiera(por defecto sube a AWS).Básicamente es un framework para subir funciones,aunque también permite preconfigurar multiples features.
 Bien,volviendo a AWS,para poder usar Funciones antes tendré que tener un usuario con permisos para subir código.Esto lo debo gestionar con IAM,que es el servicio de gestión de usuarios de AWS.
@@ -49,15 +50,15 @@ IMPORTANTE: me pedirá un username y elegir un tipo de credenciales(la primera e
 
 Eligo la primera,y puedo ver que me darán una Access Key y una Secret Access Key para la AWS API,la AWS CLI, el SDK y demás herramientas.Realmente no quiero crear un IAM user,sólo obtener las credenciales.
 
-Tras elegir opción me pedirá que cree un grupo(básicamente que eliga el role),ya ellos me proporcionan varios roles o grupos.Podría darle sólo acceso a EC2 o a Lambda Functions,pero vamos a darle AdministratorAccess para que nos hackeen todo.
+Tras elegir opción me pedirá que cree un grupo(básicamente que eliga el role),ya ellos me proporcionan varios roles o grupos.Podría darle sólo acceso a EC2 o a Lambda Functions,pero vamos a darle Administrator Access para que nos hackeen todo.
 
-Despues de crear un grupo con los accesos que desee puedo etiquetar a este usuario(por ejemplo podria etiquetarlo como developers o testers,etc)
+Despues de crear un grupo con los accesos que desee puedo etiquetar a este usuario (por ejemplo podria etiquetarlo como developers o testers,etc)
 Tras etiquetarlo me darán las Credenciales,y las puedo bajar en .csv.Sea como sea cuando cierre esa pestaña no las veré más.
 
-									AWS CLI
+								AWS CLI
 
-Para interactuar con aws debería descargar su CLI.
-Puedo instalar en mi SO el AWS CLI,puedo buscar por Aws cli(lo puedo instalar con apt o con pip).Ver la version con --version o help con --help:
+Para interactuar con aws debo descargar su CLI.
+Puedo instalar en mi SO el AWS CLI,puedo buscar por Aws cli en Google y eligo la instalación acorde a mi Sistema Operativo(lo puedo instalar con apt o con pip).Veré la version(y por ende,confirmar que se instálo) con aws --version o --help:
 
 oscar@acer-linux:/media/oscar/CRUCIALX6/OtherCourses$ aws --version
 aws-cli/1.22.33 Python/3.8.10 Linux/5.11.0-46-generic botocore/1.23.33
@@ -65,15 +66,19 @@ aws-cli/1.22.33 Python/3.8.10 Linux/5.11.0-46-generic botocore/1.23.33
 Habrá que configurar el CLI(para que apunte a un usuario?),es decir,debo darle unas credenciales:
 >aws configure
 Me pedirá las keys,la zona del Data Center(cogerá la de la aplicación,asi que lo puedo omitir)El default output format también lo puedo omitir.
+
 Tras este paso ya debería tener configurado AWS CLI con las credenciales de mi usuario recién creado.Ahora hay que crear el proyecto con el framework Serverless y configurar el Cloud mediante un config file
+Recuerda que puedo ver el user con aws configure list
 
 					FRAMEWORK SERVERLESS
 
+Ahora si,vamos a instalar el framework Serverless para crear y configurar un proyecto usandolo.Fijate que por defecto el proyecto apuntará a AWS.
 En la sección gettingStarted puedo ver como instalarlo.La forma más fácil es con npm pero puedo descargar el binario con curl,usar chocolatey,apt,...
+
 Lo instalo pues:
 npm install -g serverless (recuerda que lo puedo desinstalar con npm uni -g <pkg>
 
-IMPORTANTE:al ejecutar el comando <serverless> me va a crear un directorio en la ruta donde esté.
+IMPORTANTE:al ejecutar el comando <serverless> me va a crear un proyecto(es como un <serverless init>)  en la ruta donde esté.
 Se me pedirá elegir una plantilla inicial,tengo para Node y Python de momento.Dado que queriamos una REST API eligo esa opcion.
 También me pedirá si quiero logearme o si quiero que se despliegue automáticamente el proyecto.Elegimos no de momento.
 
@@ -93,6 +98,7 @@ module.exports.hello = async (event) => {
     ),
   };
 };
+
 Lógicamente es una función muy simple,pero yo puedo ejecutar cualquier cosa.Para subir esta función usaré serverless CLI de nuevo,pero aún hay que configurar el serverless.yaml
 
 NOTA:fijate como puedo usar un OR en un yaml:
@@ -118,7 +124,7 @@ functions:
 
 Puedo ver que es bastante fácil referenciar el archivo,la función,el environment,ruta y verbo para acceder a la función...
 
-Para subir la función hay que usar el comando serverless deploy,pero faltaba configurar la región(el usuario ya sabe a quién subirlo):
+Para subir la función hay que usar el comando serverless deploy,pero faltaba configurar la región(el usuario ya sabe a quién subirlo,será el aws active user):
 serverless deploy --verbose
 
 Puedo ver que serverless está configurando AWS por mi,podría hacerlo yendo a cada servicio pero sería una locura:
@@ -146,6 +152,7 @@ functions:
   hello: aws-lambda-node-restapi-dev-hello
 layers:
   None
+
 Si voy a ese endpoint se ejecutará la lógica de la función.
 NOTA: puedo ejecutar las funciones en local con <serverless invoke local --function NombreFuncion>:
 >serverless invoke local --function hello <- ejecutar funcion 'hello' en local
@@ -192,9 +199,10 @@ Ahora tengo que crear una propiedad más en provider llamada iamRoleStatements y
 
 Con todo esto ya tendría una base de datos configurada para poder usarla.
 
-	MINUTO 37 LAMBDA FUNCTION PARA CREAR UNA TAREA INSTALAR AWS-SDK
+	LAMBDA FUNCTION PARA CREAR UNA TAREA INSTALAR AWS-SDK
 
-Si quiero crear otra función tendré que declararla en la propiedad functions en el serverless.yaml.Fijate que esta vez es por post y la url será /tasks:
+Dado que vamos a interactuar con la DB tendremos que instalar su sdk con npm install aws-sdk -S
+Fijate que por cada función que cree tendré que declararla en la propiedad functions en el serverless.yaml.Fijate que esta vez es por post y la url será /tasks:
 
 functions:
   createTask: #nombre de la funcion
@@ -206,10 +214,11 @@ functions:
   updateTask:
     ...
 
-En cuanto a la función,siempre se recibe un argumento al que llamaremos event,pues en teoría es un evento.A partir de ahora habrá que instalar el módulo node aws-sdk,el cual me permitirá interactuar con múltipes servicios de AWS:
+En cuanto a la función,siempre se recibe un argumento al que llamaremos event,pues en teoría es un evento.A partir de ahora habrá que instalar el módulo node aws-sdk en el proyecto ,el cual me permitirá interactuar con múltipes servicios de AWS(anteriormente sólo tenia un proyecto básico de Serverless):
+
 npm i aws-sdk
 
-const { uuidv4 } = require("uuid");
+const { uuidv4 } = require("uuid"); <- npm i uuid también,asinto
 const AWS = require("aws-sdk");
 
 exports.addTask = async (event) => {
@@ -262,4 +271,179 @@ IMPORTANTE: el servicio de logs se llama CloudWatch en AWS.Bien,al crear una tas
 
 							LISTAR TAREAS 
 
-MINUTO 50
+Para listar tareas es más sencillo.Creo la función que se conecte mediante el aws-sdk a la dynamoDb y simplemente uso el método scan({TableName:'xxx'}).En el serverless.yaml quedará asi:
+
+  getTasks: 
+    handler: src/getTasks.getTasks # folder/archivo.funcion
+    events:
+      - httpApi:
+          path: /tasks  
+          method: get 
+
+Puedo ver que la función es más sencilla,lo cual era obvio:
+
+const getTasks = async (event) => {
+  try {
+    const dynamoDb = new AWS.DynamoDB.DocumentClient();
+    const data = await dynamoDb.scan({TableName:'TasksTable'}).promise();
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify(data.Items),
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error }),
+    };
+  }
+};
+NOTA:Recuerda que para ver los logs de los errores AWS me proporciona el servicio CloudWatch.Más aún,cuando yo haga un console.log en el código ese console.log está en la nube,asi que tendré que ir a CloudWatch:
+  } catch (error) {
+    console.error(error); <- saldrá por CloudWatch
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error }),
+    };
+  }
+NOTA:fijate que a Fazt le dió fallo usar statusCode y tuvo que usar status,además no uso JSON.stringify.
+Lamentablemente al usar FaaS tendré que usar lo que ellos me den para control de errores.
+
+					GET ONE TASK(THROUGH ID)
+
+Para buscar en DynamoDB con un filtro voy a usar el método get({TableName:'TasksTable,Key:{id}}).Muy importante,el método get pide como segundo argumento un Key:{} de tipo Object con el filtro o filtros.
+IMPORTANTE:además de aprender a buscar según filtro,para acceder a un Param Obligatorio se hace a través de event.pathParameters.ParamName.Ejemplo:
+
+const AWS = require('aws-sdk');
+
+export const GET_ONE_USER = async (event) => {
+ const id  = event.pathParameters.id;
+ const dynamoDb = new AWS.DynamoDB.DocumentClient(); <- recuerda que es una clase
+
+ const result = await dynamoDb.get({TableName:'TasksTable',Key:{id:id}}).promise();
+return {
+  statusCode:200,
+  body:{ result.Item }
+
+NOTA:fijate que es Item y no Items esta vez,ya que espero un Documento
+
+IMPORTANTE: el nombre del params será el que queramos,simplemente hay que definirlo en el yaml entre llaves,como en Spring:
+ 
+ getTask: 
+    handler: src/getTask.GET_TASK # folder/archivo.funcion
+    events:
+      - httpApi: # vas a usar un método HTTP
+          path: /tasks/{id} # en serverless un param va en {}  
+          method: get 
+
+Ya puedo ver que me crea una ruta dinámica con un Param obligatorio:
+endpoints:
+  GET - https://qvzttz98vi.execute-api.eu-west-2.amazonaws.com/
+  POST - https://qvzttz98vi.execute-api.eu-west-2.amazonaws.com/tasks
+  GET - https://qvzttz98vi.execute-api.eu-west-2.amazonaws.com/tasks
+  GET - https://qvzttz98vi.execute-api.eu-west-2.amazonaws.com/tasks/{id}
+
+Simplemente haremos una petición correcta y se nos devolverá una tarea.Desde luego puedo ver la potencia de todo esto.
+
+							ACTUALIZAR TAREA
+
+Un put siempre es la unión de un body + un Param,y realmente ya lo hemos hecho por separado.Me viene genial para repasar.Asi que declaramos una nueva función:
+
+ updateTask: 
+    handler: src/updateTask.UPDATE_TASK # folder/archivo.funcion
+    events:
+      - httpApi: # vas a usar un método HTTP
+          path: /tasks/{id} # en serverless un param va en {}  
+          method: put 
+
+Para actualizar usaré el método update(TableName,Key:{},UpdateExpression,ExpressionAttributeValues,ReturnValues)el cual recibe una table,una expresión(la cual usará prepared statements para evitar inyección) y otra propiedad ExpressionAttributeValues para indicar donde puede encontrar los valores de las variables que usó en la preparedStatement.
+
+También necesita la Key para filtrar por el registro(o registros) donde actualizar y la propiedad ReturnValues para devolver lo que quiera.Ejemplo:
+
+exports.UPDATE_TASK = async (event) => {
+  const {id} = event.pathParameters;
+  const { title,description,done} = JSON.parse(event.body);
+  const dynamoDb = new AWS.DynamoDB.DocumentClient();
+
+try{
+ const result = await dynamoDb.update({
+  TableName:'TaskTable',
+  Key:{id},
+  UpdateExpression: "set title = :title, description = :description, done=:done",
+  ExpressionAttributeValues: {
+ 	":title":title,
+    ":description":description,
+    ":done":done
+  },
+  ReturnValues: "Updated"
+ }).promise();
+
+ return {
+  statusCode: 200,
+  body: JSON.Stringify("updated") 
+
+}catch(error){
+  ...
+}
+De nuevo puedo ver que es bastante sencillo.Veamos por último como borrar un documento.
+
+			DELETE TASK IN DYNAMODB WITH SERVERLESS FUNCTIONS
+
+Para borrar usaremos su método delete(TableName,Key:{}).Muy sencillo a estas alturas:
+exports.DELETE_TASK = async (event) => {
+
+  const {id} = event.pathParameters;
+  const dynamoDb = new AWS.DynamoDB.DocumentClient();
+
+  try {
+    await dynamoDb.delete({
+      TableName: "TaskTable",
+      Key: { id, },
+    }).promise();
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify("Task deleted with success"),
+    };
+
+También es importante aprender como ejecutar middlewares con AWSLambda.
+
+					AWS LAMBDA - MIDDLEWARES
+
+Para poder procesar datos en funciones serverless hay varios módulos.En concreto el paquete npm 'middy' permite añadir funciones dentro de serverless.
+
+Basicamente permite procesar datos antes de llegar a la función principal a través de su método use().Por ejemplo,podemos automatizar todo el parseo tan repetitivo que tenemos que hacer(para ello necesitamos el modulo core y otro):
+
+npm install @middy/core
+npm install @middy/http-json-body-parser
+
+PAra usar sus types en TS(npm i -D @types/aws-lambda)
+
+Los importo:
+const middy = require("@middy/core");
+const jsonBodyParser = require("@middy/http-json-body-parser");
+
+Ya no tendré que usar JSON.parse:
+ const { title, description } = event.body;
+
+Pero para que haga esto hay que pasar la función al middy.use:
+module.exports = {
+  ADD_TASK: middy(ADD_TASK).use(jsonBodyParser()),
+}
+
+Al final lo que tengo que entender es que puedo añadir funcionalidad a este Backend,simplemente es investigar.
+
+NOTA: es posible emular todo esto(AWS Lambda) en local:
+Alternatively, it is also possible to emulate API Gateway and Lambda locally by using serverless-offline plugin. In order to do that, execute the following command:
+
+serverless plugin install -n serverless-offline
+It will add the serverless-offline plugin to devDependencies in package.json file as well as will add it to plugins in serverless.yml.
+
+After installation, you can start local emulation with:
+
+serverless offline
+To learn more about the capabilities of serverless-offline, please refer to its GitHub repository.
+Repo: https://github.com/dherault/serverless-offline
+
+

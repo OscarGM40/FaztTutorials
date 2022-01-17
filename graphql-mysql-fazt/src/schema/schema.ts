@@ -2,7 +2,7 @@
 /* UNO con la clase GraphQLSchema debo crear un schema,el cual tendrá una RootQuery y una RootMutation albergando todas las queries y mutations de este schema */
 /* DOScon la clase GraphQLObjectType puedo crear un Object,será una RootQuery y una RootMutation*/
 import { GraphQLSchema,GraphQLObjectType } from 'graphql';
-import { CREATE_USER, DELETE_USER } from './Mutations/User';
+import { CREATE_USER, DELETE_USER, UPDATE_USER } from './Mutations/User';
 import { GET_ALL_USERS, GET_ONE_USER } from './Queries/User';
 
 /* un GraphQLObjectType recibe un objeto de configuración con las propiedades name y fields.En fields irán definidas todas las queries o mutations que puedo usar */
@@ -20,6 +20,7 @@ const RootMutation = new GraphQLObjectType({
   fields: {
     createUser: CREATE_USER,
     deleteUser: DELETE_USER,
+    updateUser: UPDATE_USER,
   }
 })
 

@@ -347,4 +347,107 @@ Fijate también que puedo desestructurar incluso en el segundoa argumento del re
 
 				UPDATE USER MUTATION
 
-MINUTO 1h25
+Actualizar es algo más complejo ya que necesitará el body con la data y un id(siempre es una mezcla de post y delete)Además,ya entrariamos en parametros requeridos y opcionales,ya que es posible que quiera comparar passwords y por ello deberan ser argumentos requeridos:
+
+export const UPDATE_USER = {
+  type: GraphQLBoolean,
+  args: {
+    id: { type: GraphQLID },
+    name: { type: GraphQLString, required: true },
+    email: { type: GraphQLString, required: true },
+    oldPassword: { type: GraphQLString, required: true },
+    newPassword: { type: GraphQLString, required: true }
+  },
+  async resolve(_: any, { id, name, email, oldPassword, newPassword }: any) {
+
+    /* habria que comparar las passwords */
+    const userFound = await Users.findOne(id);
+    const isMatch = bcrypt.compareSync(oldPassword, userFound.password);//normal-hashed
+
+    /* si no coinciden no tiene autorización */
+    if (!isMatch) { return false; }
+    /* si coinciden puede cambiar su password,luego encripto su nueva password*/
+
+    const encryptedPassword = bcrypt.hashSync(newPassword, bcrypt.genSaltSync(10));
+
+    const result = await Users.update({ id }, { name, email, password: encryptedPassword });
+    console.log(result);
+    if (result.affected === 1) {
+      return true;
+    } else {
+      return false;
+    }
+Claro que llegados a este punto puedo observar que GraphQLBoolean se queda un poco corto,asi que lo mejor será devolver nuestro propio response:
+
+export const MessageType = new GraphQLObjectType({
+  name: 'Message',
+  fields: {
+    success: { type: GraphQLBoolean },
+    message: { type: GraphQLString}
+  }
+});
+
+Con el boleano + el string daremos un mejor feedback.Fijate que esto es importante:
+ /* si no coinciden no tiene autorización */
+    if (!isMatch) {
+      return {
+        success: false,
+        message: "Las contraseñas no coinciden"
+      };
+    }
+
+    /* si coinciden puede cambiar su password,luego encripto su nueva password*/
+    const encryptedPassword = bcrypt.hashSync(newPassword, bcrypt.genSaltSync(10));
+
+    const result = await Users.update({ id }, { name, email, password: encryptedPassword });
+    console.log(result);
+    if (result.affected === 1) {
+      return {
+        success: true,
+        message: "Usuario actualizado"
+      };
+    } else {
+      return {
+        success: false,
+        message: "No se pudo actualizar el usuario"
+      };
+    }
+Por último,y quedando claro que debo usar customTypes masivamente,el tener que especificar cada campo es algo tedioso.Para ello puedo usar la clase GraphQLInputObjectType(),instanciandola también.No confundir con GraphQLObjectType.
+
+export const UPDATE_USER = {
+  type: MessageType,
+  args: {
+    id: { type: GraphQLID },
+    campos:{
+      type: new GraphQLInputObjectType({
+        name: 'campos',
+        fields: {
+          name: { type: GraphQLString },
+          email: { type: GraphQLString },
+          oldPassword: { type: GraphQLString },
+          newPassword: { type: GraphQLString } 
+        }
+      })
+    }
+
+Ahora ya en vez de pasar 4 o 5 propiedades sólo pasaré dos.Claro que campos será una propiedad object con todos los fields:
+  async resolve(_: any, {campos,id}: any) {
+
+La mutation en GraphiQL quedaría asi:
+mutation {
+  updateUser(id:"5",campos:{
+    name:"jane garrapata",
+    email:"jane@gmail.com",
+    oldPassword:"moko",
+    newPassword:"123456"
+}){
+    success,message
+  }
+}
+Desde luego queda más legible.
+
+Realmente ya hemos creado el CRUD,Fazt hará proyectos más complejos.Asi que de momento hemos terminado.Sin embargo vamos a hacer el deploy y para ello hay que configurar alguna variable de entorno:
+
+			VARIABLES DE ENTORNO A CONFIGURAR AL USAR GRAPHQL
+
+Minuto 1h54 Nota: H mayúscula va a la primera linea y L a la última.ZZ desidenta.
