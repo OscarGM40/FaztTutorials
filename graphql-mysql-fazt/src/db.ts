@@ -5,14 +5,16 @@
 import { createConnection } from 'typeorm';
 import { Users } from './entities/User';
 
+const PE = process.env;
+
 export const connectDB = async () => {
     await createConnection({
       type: 'mysql',
-      host: '0.0.0.0',
-      port: 3307, // el port va como number
-      username: 'root',
-      password: 'root',
-      database: 'graphql_typeorm_fazt',
+      host: PE.DB_HOST,
+      port: +PE.DB_PORT!, // el port va como number
+      username: PE.DB_USER,
+      password: PE.DB_PASSWORD,
+      database: PE.DB_DATABASE,
       entities: [Users],
       synchronize: true, // si no existe la db o las tablas la crea
       ssl: false, //como es local iremos sin ssl

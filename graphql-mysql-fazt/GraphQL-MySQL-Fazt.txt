@@ -450,4 +450,48 @@ Realmente ya hemos creado el CRUD,Fazt hará proyectos más complejos.Asi que de
 
 			VARIABLES DE ENTORNO A CONFIGURAR AL USAR GRAPHQL
 
-Minuto 1h54 Nota: H mayúscula va a la primera linea y L a la última.ZZ desidenta.
+NOTA: puedo actualizar la configuración de AWS Amplify Auth con <amplify> <module> update.Obviamente primero debí haberlo añadido con amplify add <module>.
+NOTA:recuerda que un método que wrapea a un componente asi:
+withAuthentication(App) y usarlo asi const App = () => { <Authenticator>...</Authenticator> es lo mismo,ambos son un HOC.
+
+Volvamos al proyecto para configurarlo para poder desplegarlo.Lo primero que tengo que tener en cuenta es que tengo un backend en TS y una base de datos.Además,estabamos usando ts-node-dev(que vigila el código) pero no es necesario para produciión.Lo que haremos será convertirlo a JS con Typescript compiler:
+"build":"tsc -p ." <- ojo con las rutas.
+
+Bien una vez compile tendré un index.ts el cual puedo mantener activo con nodemono incluso con node: 
+"start": "node dist/index.js"
+TAmbién puedo ignorar el node_modules y dist.Ahora si,vamos a configurar las variables de entorno.Fijate que esto que tengo en db.ts no debo subirlo a Github:
+
+export const connectDB = async () => {
+    await createConnection({
+      type: 'mysql',
+      host: '0.0.0.0',
+      port: 3307, // el port va como number
+      username: 'root',
+      password: 'root',
+      database: 'graphql_typeorm_fazt',
+      entities: [Users],
+      synchronize: true, // si no existe la db o las tablas la crea
+      ssl: false, //como es local iremos sin ssl
+    });
+}
+IMPORTANTE: el paquete dotenv se usa para universalizar la lectura y creación de variables de entorno.Dado que cada Sistema Operativo tiene distintos comandos para las variables de entorno,se usa una librería externa abstrayendonos del Sistema Operativo donde esté corriendo la app y asi no hay problemas.
+Esta es su principal razón de ser.
+
+Dado que en este proyecto sólo necesito las variables en un archivo(el db.ts) importo el modulo dotenv alli:
+import { config } from 'dotenv';
+config();
+
+IMPORTANTE:al estar en TS el port debe ser un Number,pero recuerda que son todo Strings lo que sale del .env,asi que hay que parsear:
+   port: +PE.DB_PORT!, // el port va como number
+TAmbién podriá usar la función global de Javascript Number(arg),en cualquier framework,etc...
+Veamos ya como desplegarlo
+
+				DEPLOY DE UNA API CON GRAPHQL
+
+Debo tener en cuenta que casi con toda probabilidad un backend de GraphQL estará formado por la Base de Datos más el propio backend.
+Digital Ocean App Platform es la herramienta de despliegue de DO.Cuesta 5$ al mes.
+Digital Ocean ManageDatabases es su servicio de gestión de Databases con DO.Cuesta 15$ al mes.
+
+
+
+
