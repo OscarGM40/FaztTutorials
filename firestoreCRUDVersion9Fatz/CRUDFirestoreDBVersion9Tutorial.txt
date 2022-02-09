@@ -1,0 +1,176 @@
+				FIRESTORE DB USE-TUTORIAL TASK-CRUD IN VERSION 9
+
+Source: https://www.youtube.com/watch?v=ey4k6mW9ds4&ab_channel=FaztCode
+
+Vamos a crear un pequeño CRUD usando la version 9 y FirestoreDB,que introdujo varios cambios importantes, usando BaaS con Firebase.
+Recuerda que un proyecto de Firebase también es creado en GoogleCloud.
+Mientras no sea un proyecto de verdad no tiene sentido habilitar las analytics.
+
+Creo un proyecto nuevo,y le enlazo una app tipo Web(puedo ir al proyecto con la ruedita).
+
+IMPORTANTE: cuando agrege la app al proyecto hasta ahora siempre he usado npm,pero fijate que puedo usar una etiqueta <script> y usarla.Fijate que es <script type="module>,esto es para que pueda usar import y export en JS.
+Asi pues lo copio y lo pego en el index.html.
+IMPORTANTE:esto me conecta al BaaS del proyecto,es decir a Firebase,pero aún no he usado nada,ni Auth ni Firestore o Functions,etc.Es decir que falta esa parte aún.
+
+							AGREGAR FIRESTORE V9
+
+Habilito Firestore(en modo prueba) e,importante,fijate que el boilerplate(plantilla) inicial ya me da un enlace para agregar productos:
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-app.js";
+  
+// Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries <- ÉSTE!
+
+En este enlace ya me dice como es el import de cada Servicio que ofrecen.IncreibleIncluso puedo clickar en cada tarjeta e ir a ese servicio.Este link es fundamental
+
+NOTA:fijate que firebase funciona con todo,Java,Kotlin,Python,Go,Ruby,C++,Unity,es muy poderoso.
+Fatz prefiere usar las CDNS(buscar por Firebase añadir SDK mediante CDN,etc)El link aqui: https://firebase.google.com/docs/web/learn-more#add-sdks-cdn
+
+NOTA: el primer enlace era la CDN para el SDK de Firebase,el global,los demás son muy parecidos.por ejemplo estos son los de auth y firestore:
+
+1- Authentication	import { } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-auth.js"
+2- Cloud Firestore	import { } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js"
+
+						AÑADIR UN DOCUMENTO - addDoc -
+
+ Bien,hora de rescatar el formulario.Fijate que forma tan interesante de acceder a los inputs o controles:
+* Teniendo un <form> asi:
+<form id="task-form">
+  <input id="task-title">
+  <textarea id="task-description">
+
+Puedo hacer lo siguiente:
+  const form = document.getElementById("task-form"),
+  const title = form['task-title'].value;
+  const description = form['task-description'].value;
+
+NOTA:fijate que en form['task-title'] tengo el control,es decir,toda la etiqueta(J<input ...>),asi que tengo que usar .value.
+
+IMPORTANTE: recuerda que usar type="module" me da acceso a import/export en todo el proyecto,pero tengo que usar las extensiones de los archivos en Vanilla JS:
+
+import { saveTask } from "./firebase.js";
+
+Bien,para interactuar con la Db vamos a traernos varias funciones
+// CDN para el SDK de Cloud Firestore
+/** getFirestore me permite conectar a la Cloud Firestore,es decir, retorna la conexión(const db = getFirestore())
+ *  collection me permite interactuar con una colección
+ *  addDoc permite añadir un documento a una coleccion
+ */
+import { getFirestore, collection,addDoc } from "https://www.gstatic.com/firebasejs/9.6.6/firebase-firestore.js";
+
+Y ya simplemente las uso:
+export const saveTask = async (title,description) => {
+  await addDoc(collection(db,'tasks'),{title,description})
+
+IMPORTANTE: con addDoc Firebase crea un documento.Obviamente es código asincrono
+
+NOTA: todo esto lo puedo ver en su documentación(buscar por 'firebase add'):
+https://firebase.google.com/docs/firestore/manage-data/add-data
+
+				LISTAR DOCUMENTOS - getDoc & getDocs -
+
+IMPORTANTE: fijate que puedo buscar por firebase get data o firebase add data.
+Bien,asi como tenemos addDoc tengo getDocs para traer varios documentos o getDoc para traer un documento(por Id)
+
+NOTA:recuerda que Firestore me va a devolver una snapshot de la db en el momento en que hago la query,conlo que simplemente llamar a getDocs no va a ser suficiente:
+
+export const getTasks = async () => {
+  await getDocs(collection(db,'tasks')).then(tasks => {
+    console.log(tasks);
+  });
+
+Tengo que transformar esa snapshot gigante con el método data()S:
+
+window.addEventListener('DOMContentLoaded',async () => {
+
+  const querySnapshot = await getTasks();
+  let html='';
+
+  querySnapshot.forEach(doc => {
+    const task = doc.data()
+    html += `
+      <div>
+        <h3>${task.title}</h3>
+        <p>${task.description}</p>
+      </div>
+
+NOTA: sin embargo hay un problema y es que la snapshot no está en tiempo real y podría suscribirme a la DB mejor.Para ello tengo que usar el método onSnapshot que me proporciona Firebase
+NOTA:onSnapshot necesita una colección y una callback que va a llamar en cada cambio de esa colección.Lógicamente es lo que queremos:
+
+window.addEventListener("DOMContentLoaded", async () => {
+  /* no quiero solamentte la snapshot temporal porque no es en tiempo real */
+  // const querySnapshot = await getTasks();
+
+  /* vamos a suscribirnos a los cambios en la collection */
+  onSnapshot(collection(db, "tasks"), (querySnapshot) => {
+    console.log(querySnapshot, "q");
+    let html = "";
+
+    querySnapshot.forEach((doc) => {
+      const task = doc.data();
+      // console.log(task);
+      html += `
+        <div>
+          <h3>${task.title}</h3>
+          <p>${task.description}</p>
+        </div>
+        `;
+    });
+    tasksContainer.innerHTML = html;
+  });
+});
+
+Y aún mejor refactorizar un poco pasando la callback como parámetro:
+export const onGetTasks = (callback) => onSnapshot(collection(db, "tasks"),callback);
+Lo importante es que trabajar con Firestore y no usar Subscriptions es de prehistorics.
+
+						44M DELETE DOCUMENTS
+
+IMPORTANTE: asi como tengo acceso a ese método data que transforma la snapshot en data legible tengo la propiedad id que me devuelve el id del documento.
+
+  querySnapshot.forEach((doc) => {
+      const task = doc.data();
+      const id = doc.id;
+
+Asi que la puedo pasar en una custom Propertie:
+  <button data-id="${id}"class='btn-delete'>Delete</button>
+
+Luego para acceder se puede acceder por el evento o los attributes:
+ btn.addEventListener("click", async (event) => {
+    console.log(btn.attributes[0].value);
+    console.log(event.target.dataset.id);
+
+Cualquiera de las dos me devolverá el valor de data-id.Ahora bien ,para borrar sólo queremos borrar un documento luego habrá que usar doc(database,collection,filter) al llamar a deleteDoc:
+
+export const deleteTask = async (taskId) => await deleteDoc(doc(db,"tasks", taskId)); <- fijate que lleva tres argumentos
+De nuevo,lo importante es que puedo buscarlo en la documentación cuando quiera.
+
+						57M EDITAR UN DOCUMENTO
+
+Para editar un documento primero habrá que traerlo,luego necesitaré getDoc y doc:
+
+export const getTask = async (taskId) => await getDoc(doc(db, "tasks", taskId));
+
+    editButtons.forEach((btn,idx) => {
+      btn.addEventListener("click", async (event) => {
+        const taskId = event.target.dataset.id;
+        console.log(btn.attributes[0].value);
+        const task = await getTask(taskId);
+        console.log(task.data());
+      });
+    });
+
+Despues,para actualizar,fijate que es un sólo documento asi que usaré doc y el método updateDoc:
+export const udateTask = async (id,newFields) => await updateDoc(doc(db, "tasks", id), newFields);
+Fijate que usé doc(where,newData) => updateDoc(doc(db,"tasks",id),newFields)
+
+LLamo a esta función con lo necesario:
+ if (!editStatus) {
+    await saveTask(title, description);
+  } else {
+    await updateTask(id, { title, description });
+    editStatus = false;
+    taskForm.querySelector("#btn-task-save").innerText = "Save";
+  }
+
+Por último estilizamos con Bootswatch.Fijate que simplemente es traer la url del min.css con click derecho en download.O referenciar el archivo.
