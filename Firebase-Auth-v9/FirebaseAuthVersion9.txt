@@ -1,0 +1,107 @@
+LOGIN EN REACT CON FIREBASE AUTH V9 CON GOOGLE,FORGOT PASSWORD Y CUSTOM PASSWORD
+
+Source: https://www.youtube.com/watch?v=H_vEJt5Id_I&ab_channel=FaztCode
+
+Vamos a crear un proyecto de React que use Firebase Auth,tanto con Google como con Custom Email y Password.Aparte implementaremos el forgot password y además usaremos TailwindCSS para estilizar.Empecemos instalando las dependencias necesarias:
+
+					PASOS PARA AÑADIR TAILWIND A UN PROYECTO
+
+Puedo ver en la documentación de TailwindCSS varias formas para instalarlo,dependiendo del framework que use,o si uso un framework o VanillaJs,etc...
+
+1-UNO
+NOTA:Tanto si usé create-react-app como vite parece que es igual:
+npm install -D tailwindcss postcss autoprefixer
+
+2-DOS
+Ahora genero los files 'tailwind.config.js y postcss.config.js con :
+npx tailwindcss init -p
+
+TailwindCSS necesita un archivo de configuración ya que en el proceso de compilar va a eliminar clases que no se usen,etc.
+
+3-TRES
+Bien,voy al tailwind.config.js y añado esta linea,para añadir los paths a los files que usaré :
+  content: [
+    "./index.html",
+    "./src/**/*.{vue,js,ts,jsx,tsx}",
+  ],
+
+4-CUATRO
+Añado las directivas Tailwind a mi CSS.Debo crear un /src/index.css y añadir las siguientes directivas @tailwind:
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+Obviamente,hay que importar este file en el main.js(o index.js si estoy con create-react-app).
+import './index.css' <- en el archivo principal de la app
+
+Puedo probar con un h1 para ver si lo subraya,lo pone en negrita y ese tamaño:
+
+<h1 class="text-3xl font-bold underline">
+  Hello world!
+</h1>
+
+Bien,ya tengo enlazado tailwind.Hagamos lo mismo con Firebase.Creo un proyecto,sin analiticas,y habilito el módulo Auth,y la autenticación por Google y por custom Email&Password.
+Recuerda que tengo que instalar el módulo firebase en el proyecto para enlazarlo con el de Firebase.Asi que lo instalo( npm i firebase).
+
+Creo el firebaseConfig.js e,importante,fijate que esta opción es mejor que la que usé yo en el tesla-clone(llamo a getAuth ya alli y exporto sólo auth):
+
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+
+const firebaseConfig = {
+  apiKey: "...",
+};
+
+export const firebaseApp = initializeApp(firebaseConfig);
+export const auth = getAuth(firebaseApp);
+
+Genial.Sigamos creando el routing de esta aplicación.
+npm i react-router-dom < ya me instalará la 6 cual prehistoric routing
+
+NOTA: para que una app construida con create-react-app no habrá siempre una nueva pestaña en el navegador puedo crear un .env.local con BROWSER=None.
+
+Y dado que tenemos tailwind vamos a empezar ya a estilizar la app:
+
+    <div className="bg-slate-300 h-screen text-white flex">
+      <Routes>
+          <Route path="/" element={ <Home />} />
+          <Route path="/login" element={ <Login />} />
+          <Route path="/register" element={ <Register />} />
+      </Routes>
+    </div>
+
+				CONTEXT API - AÑADIR USUARIO EN FIREBASE
+
+Vamos ver como manejar el estado en React + Firebase.Aunque sea un proyecto tan simple en un proyecto normal es muy necesario un manejador de estado.Simplemente creo un AuthContext,etc...
+
+Bien,no es importante crear un contexto o no,aunque obviamente casi siempre lo crearé.Lo importante es la sintaxis en la version 9 para crear un usuario:
+
+import { getAuth,createUserWithEmailAndPassword } from 'firebase/auth';
+
+const auth = getAuth();
+
+createUserWithEmailAndPassword(auth,email,password).then(userCredential => {
+  // registrado y logeado }).catch
+
+Fijate que el getAuth lo abstraimos,fue una gran idea.
+
+Entonces fijate  que debo declarar la funcion asincrona ya desde un principio si voy a llamarla desde otro lado(importante esto):
+
+const signup = async (email, password) => {
+  await createUserWithEmailAndPassword(auth, email, password);
+}
+
+Ahora ya funcionará bien llamar a ese signup desde otro lado también con asincronia(fijate que es imprescindible definir la función con async/await):
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+   
+    try {
+      await signup(user.email, user.password);
+      navigate('/')
+      setTimeout(() => alert("Welcome"), 1000);
+    } catch (error) {
+      setError(error.message);
+    }
+  };
+
