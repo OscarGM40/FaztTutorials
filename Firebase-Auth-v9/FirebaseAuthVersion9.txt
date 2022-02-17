@@ -105,3 +105,57 @@ Ahora ya funcionará bien llamar a ese signup desde otro lado también con asinc
     }
   };
 
+Bien,y para hacer login Firebase también proporciona la función signInWithEmailAndPassword.Obviamente tendrá que existir ese usuario en la db de Firebase:
+
+  const login = async (email, password) => {
+    await signInWithEmailAndPassword(auth, email, password);
+  }
+
+IMPORTANTE: Firebase devuelve un objeto UserCredentials tras el login o register,desde ese objeto puedo ver información como el email,el avatar,... pero no es lo mejor cogerla desde alli,ya que también me dan una Subscription a la Auth,la cual me dará información en tiempo real de cualquier cambio.
+
+Esta función se llama 'onAuthStateChanged' y obviamente viene de firebase/auth.
+Lo que vamos a hacer es acumular el user en un estado y compartirlo:
+
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    const sub = auth.onAuthStateChanged(user => {
+      setUser(user);
+      setLoading(false);
+    });
+    return () => sub.unsubscribe();
+  }, [])
+Recuerda que es una subscription
+<AuthContext.Provider value={{ signup, login,user }}>
+
+Ya puedo llamar desde cualquier componente ese 'user',y verificar si es null o no,y si no es null acceder al nombre,avatar,...
+
+Creamos también un botón en home para que se deslogueen:
+  const logout = () => {
+    auth.signOut();
+  }
+
+Fijate como protege una ruta:
+   <Route path="/" element={ <ProtectedRoute> <Home /> </ProtectedRoute> } />
+
+Al parecer no puedo proteger a <Route> sino a lo que tenga en element.IMPORTANTE
+Ya hemos terminado el login y register con contraseña y email,en la siguiente sección vamos a ver el login con Google.
+
+					1h27m LOGIN CON GOOGLE
+
+Realmente es muy sencillo,en esta version usaré esta sintaxis:
+  
+const loginWithGoogle = () => {
+    return signInWithPopup(auth, new GoogleAuthProvider());
+  }
+
+Ya solo es llamar a esta función.
+
+IMPORTANTE: obviamente necesito agregar otro proveedor en Firebase,que será Google.Fijate que en cuanto habilite Google en Firebase se va a crear un proyecto en GoogleCloud automáticamente.Recuerdar cambiar a habilitado el slider.
+También pedirá un correo.
+
+							RESET PASSWORD
+
+1h55m
+
