@@ -157,5 +157,30 @@ También pedirá un correo.
 
 							RESET PASSWORD
 
-1h55m
+Cuando perdemos una contraseña,la única forma de recuperarla es volviendo a establecer una nueva.Normalmente se envia un correo al usuario,y alli se establece una nueva.
+Firebase permite esta feature,lógicamente.
+IMPORTANTE: normalmente al dar el usuario en forgot password? se envia a otra pantalla y es muy buena idea meter algun captcha en el forgot password para evitar los bots.
+
+Bien,para resetear la password simplemente hay que llamar a su método sendPasswordResetEmail(auth,email) que pide un contexto de autenticación y el email donde mandar el link:
+
+  const resetPassword = (email) => {
+     sendPasswordResetEmail(auth,email)
+  }
+
+Lo enlazo al onClick:
+  const handleResetPassword = async (formik) => {
+    if (!formik.values.email) {
+      return setError('Please enter your email for reseting password')
+    }
+
+    try {
+      await resetPassword(formik.values.email);
+      setError('Reset password email sent - please check your email')
+    } catch (error) {
+      setError(error.message);
+    }
+
+  }
+
+IMPORTANTE: si realizo esto con un usuario de Google Firebase lo gestionará correctamente,y lo pasará a un custom User with Email y Password,obviamente con la password que pasó ese user tras visitar el link desde su gestor de correo.
 
